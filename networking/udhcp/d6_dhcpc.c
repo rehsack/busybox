@@ -1305,6 +1305,18 @@ int udhcpc6_main(int argc UNUSED_PARAM, char **argv)
 		logmode |= LOGMODE_SYSLOG;
 	}
 
+	/* try to get hostname from OS */
+	if (!client_data.hostname) {
+		char *hostname = safe_gethostname();
+		/*
+		 * Tito's safe_gethostname is finally a "safe_visible_gethostname",
+		 * but that's the most seen use-case.
+		 */
+		if (hostname[0] != '?')
+			client_data.hostname = alloc_dhcp_option(DHCP_HOST_NAME, hostname, 0);
+		free(hostname);
+	}
+
 	/* Create pidfile */
 	write_pidfile(client_data.pidfile);
 	/* Goes to stdout (unless NOMMU) and possibly syslog */

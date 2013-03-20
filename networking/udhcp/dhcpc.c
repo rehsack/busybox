@@ -498,6 +498,23 @@ static llist_t *fill_envp(struct dhcp_packet *packet)
 		putenvp(&envp, new_opt);
 	}
 
+	/* Calculate the broadcast address, if it wasn't provided
+	 * by the server, but a subnet mask of /30 or lower was given.
+	 */
+	if (udhcp_get_option(packet, DHCP_BROADCAST) == NULL) {
+		temp = udhcp_get_option(packet, DHCP_SUBNET);
+		if (temp) {
+			uint32_t subnet;
+			move_from_unaligned32(subnet, temp);
+			if (ntohl(subnet) <= 0xfffffffc) {
+				uint32_t broadcast = packet->yiaddr | ~subnet;
+				*curr = xmalloc(sizeof("broadcast=255.255.255.255"));
+				sprint_nip(*curr, "broadcast=", (uint8_t *)&broadcast);
+				putenv(*curr++);
+			}
+		}
+	}
+
 	return envp;
 }
 

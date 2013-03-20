@@ -154,7 +154,7 @@ struct dhcp_scan_state {
 //#define DHCP_ROOT_PATH        0x11
 //#define DHCP_IP_TTL           0x17
 //#define DHCP_MTU              0x1a
-//#define DHCP_BROADCAST        0x1c
+#define DHCP_BROADCAST          0x1c
 //#define DHCP_ROUTES           0x21
 //#define DHCP_NIS_DOMAIN       0x28
 //#define DHCP_NIS_SERVER       0x29

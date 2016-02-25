@@ -183,7 +183,10 @@ struct mapping_defn_t {
 	char *script;
 
 	int n_mappings;
-	char **mapping;
+	struct {
+	    char *key;
+	    char *scheme;
+	} *mapping;
 };
 
 struct variable_t {
@@ -926,6 +929,7 @@ static struct interfaces_file_t *read_interfaces(const char *filename, struct in
 
 			while ((first_word = next_word(&rest_of_line)) != NULL) {
 				currmap->match = xrealloc_vector(currmap->match, 4, currmap->n_matches);
+				debug_noise("Add mapping for %s\n", first_word);
 				currmap->match[currmap->n_matches++] = xstrdup(first_word);
 			}
 			/*currmap->n_mappings = 0;*/
@@ -1070,8 +1074,13 @@ static struct interfaces_file_t *read_interfaces(const char *filename, struct in
 						bb_error_msg_and_die("duplicate script in mapping \"%s\"", buf);
 					currmap->script = xstrdup(next_word(&rest_of_line));
 				} else if (strcmp(first_word, "map") == 0) {
+					if (rest_of_line[0] == '\0')
+						bb_error_msg_and_die("map without pair \"%s\"", buf);
 					currmap->mapping = xrealloc_vector(currmap->mapping, 2, currmap->n_mappings);
-					currmap->mapping[currmap->n_mappings] = xstrdup(next_word(&rest_of_line));
+					currmap->mapping[currmap->n_mappings].key = xstrdup(next_word(&rest_of_line));
+					if (rest_of_line[0] == '\0')
+						bb_error_msg_and_die("map without scheme \"%s\"", buf);
+					currmap->mapping[currmap->n_mappings].scheme = xstrdup(next_word(&rest_of_line));
 					currmap->n_mappings++;
 				} else {
 					bb_error_msg_and_die("misplaced option \"%s\"", buf);
@@ -1273,7 +1282,7 @@ static char *run_mapping(char *physical, struct mapping_defn_t *map)
 
 	/* Write mappings to stdin of mapping script. */
 	for (i = 0; i < map->n_mappings; i++) {
-		fprintf(in, "%s\n", map->mapping[i]);
+		fprintf(in, "%s %s\n", map->mapping[i].key, map->mapping[i].scheme);
 	}
 	fclose(in);
 	safe_waitpid(pid, &status, 0);
@@ -1445,7 +1454,13 @@ int ifupdown_main(int argc UNUSED_PARAM, char **argv)
 				}
 			} else {
 				/* ifdown */
-				if (!iface_state) {
+				if (iface_state) {
+					char *after_iface = is_prefixed_with(iface_state->data, iface);
+					if (after_iface && *after_iface == '=') {
+						free(liface);
+						liface = xstrdup(after_iface + 1);
+					}
+				} else {
 					bb_error_msg("interface %s not configured", iface);
 					goto next;
 				}
